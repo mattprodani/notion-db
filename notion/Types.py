@@ -1,149 +1,205 @@
 from datetime import datetime
+from multiprocessing.sharedctypes import Value
 from optparse import Option
 from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple, Optional, Any, TypeVar
 import json
+
+
 
 class Property(ABC):
     """
         Subclass for database property
     """
     @abstractmethod
-    def __init__(self, type: str, config: Optional[Dict] = {}, id: Optional[str] = None) -> None:
+    def __init__(self, type: str, name: str, config: dict = {}, id: Optional[str] = None) -> None:
         """Creates schema property object"""
+        if id is not None: raise NotImplementedError("id is not implemented yet")
         self.type = type
-        self.config = config
-
-    @abstractmethod
-    def compile(self, body) -> None:
-        """ Creates notion property value object """
-        d = {}
-        d.update(self.config)
-        return {"type": self.type, self.type: body, **d}
+        self.name = name
+        self.prop = {"type": type, "name": name, type: config}
 
     @classmethod
     def from_notion_property(cls, property: Dict) -> 'Property':
-        return cls(property['type'], property[property['type']], property['id'])
+        obj = cls(property["name"])
+        obj.prop = property
+        obj.name = property["name"]
+        obj.type = property["type"]
+        return obj
 
-    # @abstractmethod
+    def property_object(self) -> Dict:
+        return self.prop
+
+    @abstractmethod
+    def property_value(self, body) -> None:
+        """ Creates notion property value object """
+        return {self.type: body}
+
     def __repr__(self) -> str:
-        return json.dumps({"type": self.type, self.type: self.config})
+        return "Property:" + json.dumps(self.prop)
 
-    def update(self, property: Dict) -> None:
-        self.config.update(property)
-        if "type" in self.config:
-            del self.config["type"]
-        if self.type in self.config:
-            del self.config[self.type]
-        
-        
 
+class RichTextObject:
+    """
+        Subclass for rich text object
+    """
+    def __init__(self, text: Dict[str, str], annotations: Dict[str, Any], plain_text: str, href: Optional[str] = None) -> None:
+        """Creates rich text object"""
+        self.text = text
+        self.annotations = annotations
+        self.plain_text = plain_text
+        self.href = href
+
+    @classmethod
+    def from_notion_rich_text(cls, rich_text: Dict) -> 'RichTextObject':
+        text = rich_text["text"]
+        annotations = rich_text["annotations"]
+        plain_text = rich_text["plain_text"]
+        href = rich_text.get("href", None)
+        return cls(text, annotations, plain_text, href)
+    
+    def rich_text_object(self) -> Dict:
+        return {"text": self.text, "annotations": self.annotations, "plain_text": self.plain_text, "href": self.href}
+
+    def __repr__(self) -> str:
+        return "RichTextObject:" + json.dumps({"text": self.text, "annotations": self.annotations, "plain_text": self.plain_text, "href": self.href})
+
+    
 class RichText(Property):
     """
         RichText property
         Usage: RichText().compile("Hello World!", bold = True, italic = True, underline = True, color = "red")
     """
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, name:str, id:Optional[str] = None) -> None:
         """
             Creates a RichText property. No args accepted.
         """
-        if len(kwargs) > 0: raise ValueError("Custom Rich Text not yet supported.")
-        super().__init__("rich_text", kwargs)
-    def __repr__(self) -> str:
-        return super().__repr__()
-    def compile(self, text: str, bold = False, italic = False, strikethrough = False, underline = False, code = False, color = "default" ) -> None:
-        """Creates notion propert value provided text and formatting options"""
+        super().__init__("rich_text", name, id = id)
+
+    def property_value(self, text: str, href = None, bold = False, italic = False, strikethrough = False, underline = False, code = False, color = "default") -> None:
         annotations = {"bold": bold, "italic": italic, "strikethrough": strikethrough, "underline": underline, "code": code, "color": color}
-        d = Text().compile(text, annotations)
-        return super().compile([d])
+
+        rto = RichTextObject({"content": text}, annotations, text, href)
+        return super().property_value([rto.rich_text_object()])
+
 
 class Text(Property):
-    def __init__(self, **kwargs) -> None:
-        if len(kwargs) > 0: raise ValueError("Text property does not support configuration.")
-        super().__init__("text")
-
-    def __repr__(self) -> str:
-        return super().__repr__()
+    def __init__(self, name:str) -> None:
+        super().__init__("text", name)
     
-    def compile(self, text: str, annotations = None) -> None:
-        d = super().compile(body = {"content": text})
-        if annotations: d["annotations"] = annotations
-        return d
-
+    def property_value(self, text: str) -> None:
+        raise ValueError("Text property cannot be used as a value. See Notion API or use RichText instead.")
     
+
 class Title(Property):
-    def __init__(self, **kwargs) -> None:
-        if len(kwargs) > 0: raise ValueError("Title property does not support configuration.")
-        super().__init__("title")
+    def __init__(self, name:str) -> None:
+        super().__init__("title", name)
 
-    def compile(self, text: str, bold = False, italic = False, strikethrough = False, underline = False, code = False, color = "default" ) -> None:
+    def property_value(self, text: str, bold = False, italic = False, strikethrough = False, underline = False, code = False, color = "default" ) -> None:
         annotations = {"bold": bold, "italic": italic, "strikethrough": strikethrough, "underline": underline, "code": code, "color": color}
-        d = Text().compile(text, annotations)
-        return super().compile([d])
+        rto = RichTextObject({"content": text}, annotations, text)
+        return super().property_value([rto.rich_text_object()])
 
     
 
 class Number(Property):
-    def __init__(self, format: str = "number") -> None:
-        """ Number property schema object.
+    def __init__(self, name:str, format: str = "number") -> None:
+        """ Number property  object.
             See https://developers.notion.com/reference/database for more information.
 
             :param format: The format of the number. Defaults to 'number'.
             format accepts the following values:
             number, number_with_commas, percent, dollar, canadian_dollar, euro, pound, yen, ruble, rupee, won, yuan, real, lira, rupiah, franc, hong_kong_dollar, new_zealand_dollar, krona, norwegian_krone, mexican_peso, rand, new_taiwan_dollar, danish_krone, zloty, baht, forint, koruna, shekel, chilean_peso, philippine_peso, dirham, colombian_peso, riyal, ringgit, leu
         """
-        # if format not in ["number", "percent", "dollar", "euro", "pound", "yen", "ruble", "rupee", "won", "yuan"]: raise ValueError("Invalid format.")
-        super().__init__("number", {"format": format})
+        super().__init__("number", name, {"format": format})
 
-    def compile(self, body) -> None:
-        return super().compile(body)
+    def property_value(self, number: float) -> None:
+        return super().property_value(number)
 
 class Select(Property):
-    def __init__(self, options: List[str], colors: Dict[str, str] = {}) -> None:
+
+    def __init__(self, name:str, options: List[str] = [], colors: Dict[str, str] = {}) -> None:
         """ Select property schema object.
             See https://developers.notion.com/reference/database for more information.
 
             :param options: A list of options for the select property.
             :param colors: A dictionary of colors for each option. Defaults to empty.
         """
-        config = {}
-        config["options"] = [{"name": option} if option not in colors else {"name": option, "color": colors[option]} for option in options]
-        super().__init__("select", config)
+        options = [Select.select_option_object(option, colors.get(option, None)) for option in options]
+        super().__init__("select", name, {"options": options})
 
+    def property_value(self, option: str, color: Optional[str] = None) -> None:
+        """ Creates a select property value object.
+            See https://developers.notion.com/reference/page for more information.
 
-    def compile(self, option) -> object:
-        return super().compile({"name": option})
+            :param option: The selected option.
+            :param color: The color of the selected option. Defaults to None.
+        """
+        return super().property_value(Select.select_option_object(option, color))
 
-class MultiSelect(Select):
-    def __init__(self, options: List[str], colors: Dict[str, str] = {}) -> None:
+    @staticmethod
+    def select_option_object(name: str, color: Optional[str] = None) -> Dict:
+        return {"name": name, "color": color} if color is not None else {"name": name}
+
+class Status(Property):
+    def __init__(self, name:str, options: List[str] = [], colors:Dict[str, str]= {}) -> None:
+        """ Status property schema object.
+            See https://developers.notion.com/reference/database for more information.
+
+            :param options: A list of options for the status property.
+        """
+        options = [Status.status_option_object(option, colors.get(option, None)) for option in options]
+        super().__init__("status", name, {"options": options})
+    
+    def property_value(self, option: str, color: Optional[str] = None) -> None:
+        """ Creates a status property value object.
+            See https://developers.notion.com/reference/page for more information.
+
+            :param option: The selected option.
+            :param color: The color of the selected option. Defaults to None.
+        """
+        return super().property_value(Status.status_option_object(option, color))
+    
+    @staticmethod
+    def status_option_object(name: str, color: Optional[str] = None) -> Dict:
+        return {"name": name, "color": color} if color is not None else {"name": name}
+    
+
+class MultiSelect(Property):
+    def __init__(self, name:str, options: List[str] = [], colors:Dict[str, str]= {}) -> None:
         """ MultiSelect property schema object.
             See https://developers.notion.com/reference/database for more information.
 
-            :param options: A list of options for the select property.
-            :param colors: A dictionary of colors for each option. Defaults to empty.
+            :param options: A list of options for the multiselect property.
         """
-        super().__init__(options, colors)
-        self.type = "multi_select"
+        options = [MultiSelect.multiselect_option_object(option, colors.get(option, None)) for option in options]
+        super().__init__("multi_select", name, options)
+    
+    def property_value(self, option: str, color: Optional[str] = None) -> None:
+        """ Creates a multiselect property value object.
+            See https://developers.notion.com/reference/page for more information.
+
+            :param option: The selected option.
+            :param color: The color of the selected option. Defaults to None.
+        """
+        return super().property_value(MultiSelect.multiselect_option_object(option, color))
+    
+    @staticmethod
+    def multiselect_option_object(name: str, color: Optional[str] = None) -> Dict:
+        return {"name": name, "color": color} if color is not None else {"name": name}
 
 class Date(Property):
-    def __init__(self, **kwargs) -> None:
-        if len(kwargs) > 0: raise ValueError("Date property does not support configuration.")
-        super().__init__("date")
+    def __init__(self, name:str) -> None:
+        super().__init__("date", name)
+    
+    def property_value(self, date: str) -> None:
+        return super().property_value({"start": date})
 
-    def compile(self, start, end = None, time_zone = None) -> None:
-        """ Date can be a string in ISO format or a datetime object. Time Zone is stnadard IANA format """
-        if isinstance(start, datetime):
-            start = start.isoformat()
-        if isinstance(end, datetime):
-            end = end.isoformat()
-        body = {"start": start}
-        if end: body["end"] = end
-        if time_zone: body["time_zone"] = time_zone
-        return super().compile(body)
 
 class People(Property):
     def __init__(self, **kwargs) -> None:
         if len(kwargs) > 0: raise ValueError("People property does not support configuration.")
+        raise NotImplementedError("File property not yet implemented.")
         super().__init__("people")
     def compile(self, people: List[str]) -> None:
         raise NotImplementedError("People property not yet implemented.")
@@ -151,6 +207,7 @@ class People(Property):
 class File(Property):
     def __init__(self, **kwargs) -> None:
         if len(kwargs) > 0: raise ValueError("File property does not support configuration.")
+        raise NotImplementedError("File property not yet implemented.")
         super().__init__("file")
     def compile(self, file: str) -> None:
         raise NotImplementedError("File property not yet implemented.")
@@ -159,6 +216,7 @@ class File(Property):
 class Checkbox(Property):
     def __init__(self, **kwargs) -> None:
         if len(kwargs) > 0: raise ValueError("Checkbox property does not support configuration.")
+        raise NotImplementedError("File property not yet implemented.")
         super().__init__("checkbox")
     def compile(self, checked: bool) -> None:
         return super().compile(checked)
@@ -166,6 +224,7 @@ class Checkbox(Property):
 class URL(Property):
     def __init__(self, **kwargs) -> None:
         if len(kwargs) > 0: raise ValueError("URL property does not support configuration.")
+        raise NotImplementedError("File property not yet implemented.")
         super().__init__("url")
     def compile(self, url: str) -> None:
         return super().compile(url)
@@ -173,6 +232,7 @@ class URL(Property):
 class Email(Property):
     def __init__(self, **kwargs) -> None:
         if len(kwargs) > 0: raise ValueError("Email property does not support configuration.")
+        raise NotImplementedError("File property not yet implemented.")
         super().__init__("email")
     def compile(self, email: str) -> None:
         return super().compile(email)
@@ -180,18 +240,28 @@ class Email(Property):
 class PhoneNumber(Property):
     def __init__(self, **kwargs) -> None:
         if len(kwargs) > 0: raise ValueError("PhoneNumber property does not support configuration.")
+        raise NotImplementedError("File property not yet implemented.")
         super().__init__("phone_number")
     def compile(self, phone_number: str) -> None:
         return super().compile(phone_number)
 
 class Formula(Property):
-    def __init__(self, expression: str) -> None:
+    def __init__(self, name: str, expression: str = None) -> None:
         """ Formula property schema object.
             See https://developers.notion.com/reference/database for more information.
 
             :param expression: The formula expression.
         """
         super().__init__("formula", {"expression": expression})
+
+    def property_value(self, expression) -> None:
+        """ Creates a formula property value object.
+            See https://developers.notion.com/reference/page for more information.
+
+            :param expression: The formula expression.
+        """
+        return super().property_value({"expression": expression})
+        # THIS IS LIKELY NOT WORKING
 
 class Relation(Property):
     def __init__(self, database_id: str, relation_type: str = None) -> None:
@@ -202,6 +272,7 @@ class Relation(Property):
             :param relation_type: The type of relation (single_property or dual_property). Defaults to None.
 
         """
+        raise NotImplementedError("File property not yet implemented.")
         if relation_type not in [None, "single_property", "dual_property"]: raise ValueError("Invalid relation type.")
         if relation_type: super().__init__("relation", {"database_id": database_id, "relation_type": relation_type})
         else: super().__init__("relation", {"database_id": database_id})
@@ -216,5 +287,6 @@ class Rollup(Property):
             :param function: The function to use for the rollup. The function accepts the following values:
             count, count_values, count_unique_values, count_empty, count_not_empty, percent_empty, percent_not_empty, sum, average, median, min, max, range, formula
         """
+        raise NotImplementedError("File property not yet implemented.")
         super().__init__("rollup", {"relation_property_name": relation_property_name, "rollup_property_name": rollup_property_name, "function": function})
 

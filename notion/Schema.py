@@ -10,7 +10,7 @@ from .Types import *
 class Schema:
     SUPPORTED_TYPES = ['title', 'rich_text', 'number', 'select', 'multi_select', 'date', 'people', 'file', 'checkbox', 'url', 'email', 'phone_number', 'formula', 'relation', 'rollup']
     TYPE_MAP = {'title': Title, 'text': RichText, 'rich_text': RichText, 'number': Number, 'select': Select, 'multi_select': MultiSelect, 'date': Date, 'people': People, 'file': File, 'checkbox': Checkbox, 'url': URL, 'email': Email, 'phone_number': PhoneNumber, 'formula': Formula, 'relation': Relation, 'rollup': Rollup}
-    def __init__(self, labels: List[str], types: Optional[List[str]] = None, objects = None, title_column = 0) -> None:
+    def __init__(self, labels: List[str] = None, types: Optional[List[str]] = None, objects = None, title_column = 0) -> None:
         """
             Create a DatabaseSchema object. Required when creating a new database in Notion.
             Properties are column datatypes in Notion. 
@@ -25,12 +25,7 @@ class Schema:
 
             OR
 
-            :param labels: A list of column names
             :param objects: A list of Schema objects
-
-            OR
-
-            :param objects: A dictionary of column names to Schema objects
 
             Example:
 
@@ -38,11 +33,7 @@ class Schema:
 
             schema = Schema(['Name', 'Age', 'Favorite Color'], ['title', 'number', 'select'])
             
-            schema = Schema(['Name', 'Age', 'Favorite Color'], [Title(), 
-            Number(format = "percent"), Select(options = ["Red", "Blue", "Green"])])
-
-            schema = Schema({'Name': Title(), 'Age': Number(format = "percent"), 
-            'Favorite Color': Select(options = ["Red", "Blue", "Green"])})
+            schema = Schema(objects = [Title("User"), Number("Age"), Select("Favorite Color", options = ["Red", "Blue", "Green"])])
 
             Defaults to text objects.
             
@@ -66,21 +57,10 @@ class Schema:
             Example:
             DatabaseSchema(properties={'Name': 'title', 'Age': 'number', 'Favorite Color': 'select'})
         """
-        self.properties = OrderedDict()
 
+        self.properties = OrderedDict()
         if objects:
-            if isinstance(objects, list):
-                if len(labels) != len(objects):
-                    raise ValueError("Labels and objects must be the same length.")
-                return Schema(objects = dict(zip(labels, objects)))
-            if isinstance(objects, dict):
-                for label, object in objects.items():
-                    self.add(label, object = object)
-            elif isinstance(objects, list):
-                for label, object in zip(labels, objects):
-                    self.add(label, object = object)
-            else:
-                raise ValueError("Objects must be a list or dictionary.")
+            self.properties = OrderedDict([(obj.name, obj) for obj in objects])
         else:
             if types:
                 if len(labels) != len(types):
@@ -88,9 +68,11 @@ class Schema:
                 for label, _type in zip(labels, types):
                     self.add(label, _type = _type)
             else:
-                for label in labels:
-                    self.add(label)
-                self.update_type(labels[title_column], _type = 'title')
+                for i, label in enumerate(labels):
+                    if i == title_column:
+                        self.add(label, _type = "title")
+                    else:
+                        self.add(label)
 
 
     @classmethod
@@ -102,10 +84,9 @@ class Schema:
         """
         response = connector.get_db_schema(db_id)
         properties = response['properties']
-        schema_objects = {}
-        for name, property in properties.items():
-            schema_objects[name] = Schema.TYPE_MAP[property['type']]()
-            schema_objects[name].update(property)
+        schema_objects = [ cls.TYPE_MAP[property['type']].from_notion_property(property) for property in properties.values() ]
+        # for name, property in properties.items():
+        #     schema_objects[name] = Schema.TYPE_MAP[property['type']].from_notion_property(property)
         return cls(objects = schema_objects)
 
     def labels(self):
@@ -135,7 +116,7 @@ class Schema:
         self._update()
         
 
-    def add(self, name, _type: str = "text", object: Optional[Any] = None):
+    def add(self, name: str = None, _type: str = "text", object: Optional[Property] = None):
         """
             Add a new column to the schema.
             :param name: The name of the column
@@ -147,9 +128,9 @@ class Schema:
         if name in self.properties:
             raise ValueError("Duplicate column name encountered.")
         if object: 
-            self.properties[name] = object
+            self.properties[object.name] = object
         elif _type:
-            self.properties[name] = self.TYPE_MAP[_type]()
+            self.properties[name] = self.TYPE_MAP[_type](name)
         else:
             raise ValueError("Must provide either a type or a Schema object.")
         self._update()
@@ -177,30 +158,15 @@ class Schema:
         if object: 
             self.properties[name] = object
         elif _type:
-            self.properties[name] = self.TYPE_MAP[_type]()
+            self.properties[name] = self.TYPE_MAP[_type](name)
         else:
             raise ValueError("Must provide either a type or a Schema object.")
         self._update()
 
-    def set_options(self, column_name:str, **kwargs):
-        """
-            Set options for a column's underlying property object.
-            :param column_name: The name of the column
-            :param kwargs: The options to set
-
-            Example:
-            schema.set_options('Favorite Color', options = ["Red", "Blue", "Green"])
-            schema.set_options('Age', format = "percent")
-        """
-        if column_name not in self.properties:
-            raise ValueError("Column name not found in properties.")
-        
-        self.properties[column_name].set_options(**kwargs)
-        self._update()
 
 
     @classmethod
-    def from_pandas(self, df: pandas.core.frame.DataFrame, title_column: Any = None) -> 'Schema':
+    def from_pandas(cls, df: pandas.core.frame.DataFrame, title_column: Any = None) -> 'Schema':
         """
             Create a DatabaseSchema object from a pandas DataFrame.
             The first column of the DataFrame will be the title column.
@@ -209,16 +175,17 @@ class Schema:
             :param df: The DataFrame to create the schema from
         """
         title_column = title_column or df.columns[0]
-        objects = OrderedDict()
+        types = []
+        labels = []
         for label, dtype in df.dtypes.items():
             if label == title_column:
-                objects[label] = 'title'
-            elif dtype == 'float64':
-                objects[label] = 'number'
+                types.append('title')
+            elif dtype == 'int64' or dtype == 'float64':
+                types.append('number')
             else:
-                objects[label] = 'text'
-
-        return self(objects = objects)
+                types.append('rich_text')
+            labels.append(label)
+        return cls(labels, types, title_column = 0)
 
     def _update(self):
         """
@@ -239,9 +206,9 @@ class Schema:
         
 
     def __repr__(self):
-        return str(self.properties)
+        return f"NotionDB Schema Object: {str(self.properties)}"
     def __str__(self) -> str:
-        return f"NotionDB Schema Object: str(self.properties)"
+        return f"NotionDB Schema Object: {str(self.properties)}"
     
 
 

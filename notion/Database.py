@@ -40,7 +40,7 @@ class DatabaseRow:
         """
         data = {}
         for label, value in self.values.items():
-            data[label] = self.schema[label].compile(value)
+            data[label] = self.schema[label].property_value(value)
         self.notion_properties = data
         return data
 
@@ -48,8 +48,14 @@ class DatabaseRow:
     def from_pandas(cls, row: pd.Series, schema: Optional[Any] = None) -> 'DatabaseRow':
         """
             Creates a DatabaseRow from a pandas Series.
+            Infers the schema from the pandas Series if no schema is provided.
         """
-        return cls(row.to_dict(), schema = schema)
+        if isinstance(row, pd.DataFrame):
+            if len(row) != 1:
+                raise ValueError("DataFrame must have exactly one row.")
+            row = row.iloc[0]
+
+        return cls(row.to_dict(), schema = Schema.from_pandas(row))
 
     def __getitem__(self, key):
         return self.values[key]
