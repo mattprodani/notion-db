@@ -1,9 +1,11 @@
 from datetime import datetime
-from multiprocessing.sharedctypes import Value
-from optparse import Option
 from abc import ABC, abstractmethod
-from typing import List, Dict, Tuple, Optional, Any, TypeVar
+from typing import List, Dict, Tuple, Optional, Any, TypeVar, TYPE_CHECKING, Union
 import json
+
+
+if TYPE_CHECKING: pass
+
 
 
 
@@ -30,10 +32,25 @@ class Property(ABC):
     def property_object(self) -> Dict:
         return self.prop
 
+    def to_notion_prop(self):
+        return self.prop
+
+    def rename(self, new_name):
+        self.name = new_name
+        self.prop["name"] = new_name
+
     @abstractmethod
     def property_value(self, body) -> None:
         """ Creates notion property value object """
         return {self.type: body}
+
+    def __getattr__(self, __name: str) -> Any:
+        if __name in self.__dict__:
+            return self.__dict__[__name]
+        elif __name in self.prop[self.type]:
+            return self.prop[self.type][__name]
+        else:
+            return {}
 
     def __repr__(self) -> str:
         return "Property:" + json.dumps(self.prop)
@@ -116,6 +133,29 @@ class Number(Property):
     def property_value(self, number: float) -> None:
         return super().property_value(number)
 
+class Status(Property):
+    def __init__(self, name:str, options: List[str] = [], colors:Dict[str, str]= {}) -> None:
+        """ Status property schema object.
+            See https://developers.notion.com/reference/database for more information.
+
+            :param options: A list of options for the status property.
+        """
+        options = [Status.status_option_object(option, colors.get(option, None)) for option in options]
+        super().__init__("status", name, {"options": options})
+    
+    def property_value(self, option: str, color: Optional[str] = None) -> None:
+        """ Creates a status property value object.
+            See https://developers.notion.com/reference/page for more information.
+
+            :param option: The selected option.
+            :param color: The color of the selected option. Defaults to None.
+        """
+        return super().property_value(Status.status_option_object(option, color))
+    
+    @staticmethod
+    def status_option_object(name: str, color: Optional[str] = None) -> Dict:
+        return {"name": name, "color": color} if color is not None else {"name": name}
+
 class Select(Property):
 
     def __init__(self, name:str, options: List[str] = [], colors: Dict[str, str] = {}) -> None:
@@ -140,29 +180,6 @@ class Select(Property):
     @staticmethod
     def select_option_object(name: str, color: Optional[str] = None) -> Dict:
         return {"name": name, "color": color} if color is not None else {"name": name}
-
-class Status(Property):
-    def __init__(self, name:str, options: List[str] = [], colors:Dict[str, str]= {}) -> None:
-        """ Status property schema object.
-            See https://developers.notion.com/reference/database for more information.
-
-            :param options: A list of options for the status property.
-        """
-        options = [Status.status_option_object(option, colors.get(option, None)) for option in options]
-        super().__init__("status", name, {"options": options})
-    
-    def property_value(self, option: str, color: Optional[str] = None) -> None:
-        """ Creates a status property value object.
-            See https://developers.notion.com/reference/page for more information.
-
-            :param option: The selected option.
-            :param color: The color of the selected option. Defaults to None.
-        """
-        return super().property_value(Status.status_option_object(option, color))
-    
-    @staticmethod
-    def status_option_object(name: str, color: Optional[str] = None) -> Dict:
-        return {"name": name, "color": color} if color is not None else {"name": name}
     
 
 class MultiSelect(Property):
@@ -173,16 +190,19 @@ class MultiSelect(Property):
             :param options: A list of options for the multiselect property.
         """
         options = [MultiSelect.multiselect_option_object(option, colors.get(option, None)) for option in options]
-        super().__init__("multi_select", name, options)
+        super().__init__("multi_select", name, {"options": options})
     
-    def property_value(self, option: str, color: Optional[str] = None) -> None:
+    def property_value(self, option: Union[str, List[str]], color: Optional[str] = None) -> None:
         """ Creates a multiselect property value object.
             See https://developers.notion.com/reference/page for more information.
 
             :param option: The selected option.
             :param color: The color of the selected option. Defaults to None.
         """
-        return super().property_value(MultiSelect.multiselect_option_object(option, color))
+        if isinstance(option, str):
+            option = [option]
+        return super().property_value([MultiSelect.multiselect_option_object(o, color) for o in option])
+
     
     @staticmethod
     def multiselect_option_object(name: str, color: Optional[str] = None) -> Dict:
@@ -290,3 +310,14 @@ class Rollup(Property):
         raise NotImplementedError("File property not yet implemented.")
         super().__init__("rollup", {"relation_property_name": relation_property_name, "rollup_property_name": rollup_property_name, "function": function})
 
+
+class PropertyFactory:
+    TYPE_MAP = {'title': Title, 'text': RichText, 'rich_text': RichText, 'number': Number, 'select': Select, 'multi_select': MultiSelect, 'date': Date, 'people': People, 'file': File, 'checkbox': Checkbox, 'url': URL, 'email': Email, 'phone_number': PhoneNumber, 'formula': Formula, 'relation': Relation, 'rollup': Rollup}
+
+
+    @staticmethod
+    def create_type(type, **kwargs):
+        if type not in PropertyFactory.TYPE_MAP:
+            raise ValueError("Invalid type: {}".format(type))
+        return PropertyFactory.TYPE_MAP[type](**kwargs)
+        

@@ -1,5 +1,5 @@
 from turtle import title
-from typing import List, Dict, Tuple, Optional, Any, TypeVar
+from typing import List, Dict, Tuple, Optional, Any, TypeVar, Union
 from enum import Enum
 from abc import ABC, abstractmethod
 from collections import OrderedDict, defaultdict
@@ -89,6 +89,31 @@ class Schema:
         #     schema_objects[name] = Schema.TYPE_MAP[property['type']].from_notion_property(property)
         return cls(objects = schema_objects)
 
+
+    def to_notion(self, name = None, parent_id = None, parent_type = None):
+
+        properties = {}
+        for name, property in self.properties.items():
+            properties[name] = property.to_notion_prop()
+        
+
+        return {
+            'properties': properties
+        }
+
+    def rename_column(self, old_name: str, new_name: str) -> None:
+        """
+            Rename a column in the schema.
+            :param old_name: The current name of the column
+            :param new_name: The new name of the column
+        """
+        if old_name not in self.properties:
+            raise ValueError("Column name not found.")
+        if new_name in self.properties:
+            raise ValueError("Duplicate column name encountered.")
+        self.properties[new_name] = self.properties.pop(old_name).rename(new_name)
+        self._update()
+
     def labels(self):
         """
             Return a list of column names.
@@ -146,27 +171,33 @@ class Schema:
         del self.properties[column_name]
         self._update()
     
-    def update_type(self, name, _type: Optional[str] = None, object: Optional[Any] = None):
+    def update_type(self, name, _type: Union[str, Property], **kwargs):
         """
             Update the type of a column in the schema.
             :param name: The name of the column
-
-            Must provide one of:
-            :param _type: The type of the column 
-            :param object: A Schema object
+            :param _type: The new type of the column, could be a property object or a string
             """
-        if object: 
-            self.properties[name] = object
-        elif _type:
-            self.properties[name] = self.TYPE_MAP[_type](name)
+        if name not in self.properties:
+            raise ValueError("Column name not found in properties.")
+        if isinstance(_type, str):
+            self.properties[name] = self.TYPE_MAP[_type](name, **kwargs)
         else:
-            raise ValueError("Must provide either a type or a Schema object.")
+            self.properties[name] = _type
         self._update()
 
 
 
+    @staticmethod
+    def infer_from_values(values):
+        types = [Schema._infer(val) for val in values]
+
+
+    @staticmethod
+    def _infer(val):
+        return "number" if isinstance(val, int) or isinstance(val, float) else "rich_text"
+
     @classmethod
-    def from_pandas(cls, df: pandas.core.frame.DataFrame, title_column: Any = None) -> 'Schema':
+    def from_pandas(cls, df, title_column: Any = None) -> 'Schema':
         """
             Create a DatabaseSchema object from a pandas DataFrame.
             The first column of the DataFrame will be the title column.
@@ -174,18 +205,13 @@ class Schema:
 
             :param df: The DataFrame to create the schema from
         """
-        title_column = title_column or df.columns[0]
-        types = []
-        labels = []
-        for label, dtype in df.dtypes.items():
-            if label == title_column:
-                types.append('title')
-            elif dtype == 'int64' or dtype == 'float64':
-                types.append('number')
-            else:
-                types.append('rich_text')
-            labels.append(label)
-        return cls(labels, types, title_column = 0)
+
+        values = df.iloc[0].values
+        types = cls.infer_from_values(values)
+        title_column = 0 or title_column
+        types[title_column] = "title"
+        labels = df.columns
+        return cls(labels, types)
 
     def _update(self):
         """

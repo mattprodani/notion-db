@@ -1,5 +1,8 @@
-from typing import List, Dict, Tuple, Optional, Any, TypeVar
+from typing import List, Dict, Tuple, Optional, Any, TypeVar, TYPE_CHECKING
 import requests
+
+if TYPE_CHECKING:
+    from .Schema import Schema
 
 class Connector:
     """
@@ -46,7 +49,7 @@ class Connector:
         return response.json()
     
     # POST /databases/{database_id}/
-    def create_db(self, schema, parent: str, title:str, cover_url:str = None) -> Dict:
+    def create_db(self, schema: "Schema", parent: str, title:str, cover_url:str = None) -> Dict:
         """
             Create a new database.
             :param schema: The schema of the database
@@ -66,12 +69,13 @@ class Connector:
         return response.json()
 
     # PATCH /databases/{database_id}
-    def update_db(self, db_id: str, schema) -> Dict:
+    def update_db(self, db_id: str, schema: "Schema", title = None) -> Dict:
         """
             Update the schema of a database.
             :param db_id: The database id
             :param schema: The new schema
         """
+        if title: raise NotImplementedError("Title update not implemented")
         response = self.session.patch(f"https://api.notion.com/v1/databases/{db_id}", json = schema.to_notion())
         return response.json()
     
