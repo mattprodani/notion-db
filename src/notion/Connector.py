@@ -58,7 +58,7 @@ class Connector:
             :param cover_url: Optional, The cover image url
         
         """
-        json = schema.to_notion()
+        json = schema._to_notion()
         json["parent"] = {"page_id": parent}
         json["title"] = [{"text": {"content": title}}]
         if cover_url:
@@ -76,7 +76,7 @@ class Connector:
             :param schema: The new schema
         """
         if title: raise NotImplementedError("Title update not implemented")
-        response = self.session.patch(f"https://api.notion.com/v1/databases/{db_id}", json = schema.to_notion())
+        response = self.session.patch(f"https://api.notion.com/v1/databases/{db_id}", json = schema._to_notion())
         return response.json()
     
 

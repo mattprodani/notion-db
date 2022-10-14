@@ -1,5 +1,5 @@
-from turtle import title
 from typing import List, Dict, Tuple, Optional, Any, TypeVar, Union
+from turtle import title
 from enum import Enum
 from abc import ABC, abstractmethod
 from collections import OrderedDict, defaultdict
@@ -8,56 +8,67 @@ from .Connector import Connector
 from .Types import *
 
 class Schema:
-    SUPPORTED_TYPES = ['title', 'rich_text', 'number', 'select', 'multi_select', 'date', 'people', 'file', 'checkbox', 'url', 'email', 'phone_number', 'formula', 'relation', 'rollup']
-    TYPE_MAP = {'title': Title, 'text': RichText, 'rich_text': RichText, 'number': Number, 'select': Select, 'multi_select': MultiSelect, 'date': Date, 'people': People, 'file': File, 'checkbox': Checkbox, 'url': URL, 'email': Email, 'phone_number': PhoneNumber, 'formula': Formula, 'relation': Relation, 'rollup': Rollup}
+    """
+        Schema objects are used to define the structure of a Notion Database.
+        This class is used to create and maintain Schema objects which are used
+        to create and update Notion Databases. 
+
+        The simplest way to use this is by creating a Schema object from an existing
+        Notion Database using the Schema.from_database() method.    
+
+        If you want to create and maintain databases programatically then use the
+        default initializer.
+
+        These will allow you to use more advanced table features in Notion databases.
+        At a minimum, the title property is required.
+
+        See https://developers.notion.com/reference/database for more information.
+        Properties MUST contain exactly ONE 'title' value, this maps to the title column.
+
+        Args:
+            labels (List[str], optional): list of column names. Defaults to None.
+            types (Optional[List[str]], optional): list of types. Defaults to None.
+            objects (Property, optional): Property schema object. Defaults to None.
+            title_column (key, optional): index or key for title column. Defaults to 0.
+        
+        **Supported Types**: 
+        text, 
+        number, 
+        title, 
+        select, 
+        multi_select, 
+        date, 
+        people, 
+        file, 
+        checkbox, 
+        url, 
+        email, 
+        phone_number, 
+        formula, 
+        relation, 
+        rollup
+
+        Can be initialized in one of two ways:
+        
+            1. Provide a list of labels and types (can provide title_column instead)
+            2. Provide a list of Schema Property objects    
+
+
+        Example:
+
+            >>> schema = Schema(['Store', 'City', 'State'])
+         
+            >>> schema = Schema(['Store', 'City', 'State'], title_column = 0)
+         
+            >>> schema = Schema(['Name', 'Age', 'Favorite Color'], ['title', 'number', 'select'])
+         
+            >>> schema = Schema(objects = [Title("User"), Number("Age"), Select("Favorite Color", options = ["Red", "Blue", "Green"])])
+
+        """
+
+    _SUPPORTED_TYPES = ['title', 'rich_text', 'number', 'select', 'multi_select', 'date', 'people', 'file', 'checkbox', 'url', 'email', 'phone_number', 'formula', 'relation', 'rollup']
+    _TYPE_MAP = {'title': Title, 'text': RichText, 'rich_text': RichText, 'number': Number, 'select': Select, 'multi_select': MultiSelect, 'date': Date, 'people': People, 'file': File, 'checkbox': Checkbox, 'url': URL, 'email': Email, 'phone_number': PhoneNumber, 'formula': Formula, 'relation': Relation, 'rollup': Rollup}
     def __init__(self, labels: List[str] = None, types: Optional[List[str]] = None, objects = None, title_column = 0) -> None:
-        """
-            Create a DatabaseSchema object. Required when creating a new database in Notion.
-            Properties are column datatypes in Notion. 
-            See https://developers.notion.com/reference/database for more information.
-            Properties MUST contain exactly ONE 'title' value, this maps to the title column.
-
-            Can be initialized in one of three ways:
-            :param labels: A list of column names
-            :param types: Optional, a list of column types (Will infer 'text' if not provided)
-            :param title_column: Optional, If types is not provided, the index of the title column, otherwise
-            no effect. Defaults to 0.
-
-            OR
-
-            :param objects: A list of Schema objects
-
-            Example:
-
-            schema = Schema(['Store', 'City', 'State'])
-
-            schema = Schema(['Name', 'Age', 'Favorite Color'], ['title', 'number', 'select'])
-            
-            schema = Schema(objects = [Title("User"), Number("Age"), Select("Favorite Color", options = ["Red", "Blue", "Green"])])
-
-            Defaults to text objects.
-            
-            Supported datatypes: 
-            title, 
-            rich_text, 
-            number, 
-            select, 
-            multi_select, 
-            date, 
-            people, 
-            file, 
-            checkbox, 
-            url, 
-            email, 
-            phone_number, 
-            formula, 
-            relation, 
-            rollup
-
-            Example:
-            DatabaseSchema(properties={'Name': 'title', 'Age': 'number', 'Favorite Color': 'select'})
-        """
-
         self.properties = OrderedDict()
         if objects:
             self.properties = OrderedDict([(obj.name, obj) for obj in objects])
@@ -66,40 +77,140 @@ class Schema:
                 if len(labels) != len(types):
                     raise ValueError("Labels and types must be the same length.")
                 for label, _type in zip(labels, types):
-                    self.add(label, _type = _type)
+                    self.add(label, datatype = _type)
             else:
                 for i, label in enumerate(labels):
                     if i == title_column:
-                        self.add(label, _type = "title")
+                        self.add(label, datatype = "title")
                     else:
                         self.add(label)
 
 
     @classmethod
-    def from_notion_db(cls, connector: Connector, db_id: str):
+    def from_database(cls, connector: Connector, db_id: str):
         """
-            Create a DatabaseSchema object from an existing database in Notion.
-            :param connector: A Connector object
-            :param db_id: The database id
-        """
+        Creates a Schema object from an existing Notion database.
+        Create a Connector object prior to calling this method.
+
+        Args:
+            connector (Connector): Connector object
+            db_id (str): Notion database ID
+
+        Returns:
+            Schema: Schema object
+        
+        Raises:
+            ValueError: If database ID not found
+        
+        Example:
+            >>> connector = Connector("API_token")
+            >>> schema = Schema.from_database(connector, "db_id")
+            >>> schema
+            Schema: {'Name': Title, 'Age': Number, 'Favorite Color': Select}
+
+        """        
         response = connector.get_db_schema(db_id)
         properties = response['properties']
-        schema_objects = [ cls.TYPE_MAP[property['type']].from_notion_property(property) for property in properties.values() ]
+        schema_objects = [ cls._TYPE_MAP[property['type']].from_notion_property(property) for property in properties.values() ]
         # for name, property in properties.items():
         #     schema_objects[name] = Schema.TYPE_MAP[property['type']].from_notion_property(property)
         return cls(objects = schema_objects)
 
 
-    def to_notion(self, name = None, parent_id = None, parent_type = None):
 
-        properties = {}
-        for name, property in self.properties.items():
-            properties[name] = property.to_notion_prop()
+
+
+    @classmethod
+    def from_pandas(cls, df, title_column: Any = None) -> 'Schema':
+        """
+            Creates a Schema by inferring objects from a pandas DataFrame.
+            Infers only number and text columns. 
+
+            Args: 
+                df (pd.DataFrame): A pandas DataFrame
+                title_column (Any): The column index to use as the title. Defaults to the first column.
+            
+            Returns:
+                A Schema object
+            
+        """
+
+        values = df.iloc[0].values
+        types = cls._infer_from_values(values)
+        title_column = 0 or title_column
+        types[title_column] = "title"
+        labels = df.columns
+        return cls(labels, types)
+
+
+    def add(self, name: str = None, datatype: str = "text", object: Optional[Property] = None):
+        """Add a column to the schema.
+
+        Can be added in one of two ways:
+        1. Provide a name and datatype
+        2. Provide a Schema Property object
+
+        Args:
+            name (str, optional): column name. Defaults to None.
+            datatype (str, optional): property type. Defaults to "text".
+            object (Property, optional): property object. Defaults to None.
+
+        Raises:
+            ValueError: Duplicate Column Names
+            ValueError: No arguments provided
         
+        """        
 
-        return {
-            'properties': properties
-        }
+        if name in self.properties:
+            raise ValueError("Duplicate column name encountered.")
+        if object: 
+            self.properties[object.name] = object
+        elif datatype:
+            self.properties[name] = self._TYPE_MAP[datatype](name)
+        else:
+            raise ValueError("Must provide either a type or a Schema object.")
+        self._update()
+
+    def remove(self, column_name: str) -> None:
+        """Removes a column from the schema
+
+        Args:
+            column_name (str): column name to remove
+
+        Raises:
+            ValueError: If column name not found
+
+        """
+        if column_name not in self.properties:
+            raise ValueError("Column name not found in properties.")
+        
+        del self.properties[column_name]
+        self._update()
+    
+    def update_type(self, name:str, datatype: Union[str, Property], **kwargs):
+        """Update the type of a column
+
+        Args:
+            name (str): 
+            datatype (str or Property): New type of column
+            **kwargs: Additional arguments to pass to the new Property object initializer
+        
+        Raises:
+            ValueError: If the column name is not found
+        
+        Example:
+            >>> schema = Schema(['Store', 'City', 'State'])
+            >>> schema.update_type('Store', 'select', options = ['A', 'B', 'C'])
+
+        """        
+        if name not in self.properties:
+            raise ValueError("Column name not found in properties.")
+        if isinstance(datatype, str):
+            self.properties[name] = self._TYPE_MAP[datatype](name, **kwargs)
+        else:
+            self.properties[name] = datatype
+        self._update()
+
 
     def rename_column(self, old_name: str, new_name: str) -> None:
         """
@@ -114,104 +225,39 @@ class Schema:
         self.properties[new_name] = self.properties.pop(old_name).rename(new_name)
         self._update()
 
+
+
+    @property
     def labels(self):
         """
-            Return a list of column names.
+        Returns a list of column names.
         """
         return list(self.properties.keys())
-    
+
+    @property
     def types(self):
         """
-            Return a list of column types.
+        Returns a mapping of column names to column types.
         """
-        return [self.properties[name].type for name in self.properties]
+        return {name: self.properties[name].type for name in self.properties}
     
+    @property
     def objects(self):
         """
-            Return a list of Schema objects.
+        Returns a mapping of column names to column objects.
         """
-        return list(self.properties.values())
-
-
-    def __getitem__(self, key):
-        return self.properties[key]
-    
-    def __setitem__(self, key, value):
-        self.properties[key] = value
-        self._update()
-        
-
-    def add(self, name: str = None, _type: str = "text", object: Optional[Property] = None):
-        """
-            Add a new column to the schema.
-            :param name: The name of the column
-            :param _type: The type of the column. Defaults to 'text' 
-
-            Can override the empty Schema object with:
-            :param object: A Schema object
-            """
-        if name in self.properties:
-            raise ValueError("Duplicate column name encountered.")
-        if object: 
-            self.properties[object.name] = object
-        elif _type:
-            self.properties[name] = self.TYPE_MAP[_type](name)
-        else:
-            raise ValueError("Must provide either a type or a Schema object.")
-        self._update()
-
-    def remove(self, column_name: str) -> None:
-        """
-            Remove a column from the schema.
-            :param column_name: The name of the column to remove
-        """
-        if column_name not in self.properties:
-            raise ValueError("Column name not found in properties.")
-        
-        del self.properties[column_name]
-        self._update()
-    
-    def update_type(self, name, _type: Union[str, Property], **kwargs):
-        """
-            Update the type of a column in the schema.
-            :param name: The name of the column
-            :param _type: The new type of the column, could be a property object or a string
-            """
-        if name not in self.properties:
-            raise ValueError("Column name not found in properties.")
-        if isinstance(_type, str):
-            self.properties[name] = self.TYPE_MAP[_type](name, **kwargs)
-        else:
-            self.properties[name] = _type
-        self._update()
+        return self.properties
 
 
 
     @staticmethod
-    def infer_from_values(values):
+    def _infer_from_values(values):
         types = [Schema._infer(val) for val in values]
 
 
     @staticmethod
     def _infer(val):
         return "number" if isinstance(val, int) or isinstance(val, float) else "rich_text"
-
-    @classmethod
-    def from_pandas(cls, df, title_column: Any = None) -> 'Schema':
-        """
-            Create a DatabaseSchema object from a pandas DataFrame.
-            The first column of the DataFrame will be the title column.
-            All other columns will be of type 'rich_text' or 'number' depending on dtype.
-
-            :param df: The DataFrame to create the schema from
-        """
-
-        values = df.iloc[0].values
-        types = cls.infer_from_values(values)
-        title_column = 0 or title_column
-        types[title_column] = "title"
-        labels = df.columns
-        return cls(labels, types)
 
     def _update(self):
         """
@@ -231,18 +277,13 @@ class Schema:
         # one is provided, the first column will be used as the title column.")
         
 
-    def __repr__(self):
-        return f"NotionDB Schema Object: {str(self.properties)}"
-    def __str__(self) -> str:
-        return f"NotionDB Schema Object: {str(self.properties)}"
-    
 
 
     def _check_props(self, props):
         titles = 0
         seen_labels = set()
         for key, value in props.items():
-            if value not in self.SUPPORTED_TYPES:
+            if value not in self._SUPPORTED_TYPES:
                 raise ValueError("Invalid property type.")
             if value == 'title':
                 titles += 1
@@ -251,3 +292,29 @@ class Schema:
             seen_labels.add(key)
 
         return titles == 1
+
+    def __getitem__(self, key):
+        return self.properties[key]
+    
+    def __setitem__(self, key, value):
+        self.properties[key] = value
+        self._update()
+        
+    
+    def __repr__(self):
+        return f"NotionDB Schema Object: {str(self.properties)}"
+    def __str__(self) -> str:
+        return f"NotionDB Schema Object: {str(self.properties)}"
+    
+
+
+    def _to_notion(self, name = None, parent_id = None, parent_type = None):
+        # SHOULD REMOVE THIS
+        properties = {}
+        for name, property in self.properties.items():
+            properties[name] = property.to_notion_prop()
+        
+
+        return {
+            'properties': properties
+        }
