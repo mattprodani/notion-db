@@ -1,5 +1,5 @@
-notion
-======
+Notion
+-------
 
 .. toctree::
    :maxdepth: 4

@@ -1,10 +1,4 @@
-notion package
-==============
-
-Submodules
-----------
-
-notion.Connector module
+notion.Connector
 -----------------------
 
 .. automodule:: notion.Connector
@@ -12,7 +6,7 @@ notion.Connector module
    :undoc-members:
    :show-inheritance:
 
-notion.Database module
+notion.Database
 ----------------------
 
 .. automodule:: notion.Database
@@ -20,7 +14,15 @@ notion.Database module
    :undoc-members:
    :show-inheritance:
 
-notion.Schema module
+notion.PropertyValues
+----------------------------
+
+.. automodule:: notion.PropertyValues
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+notion.Schema
 --------------------
 
 .. automodule:: notion.Schema
@@ -28,18 +30,10 @@ notion.Schema module
    :undoc-members:
    :show-inheritance:
 
-notion.Types module
+notion.Types
 -------------------
 
 .. automodule:: notion.Types
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: notion
    :members:
    :undoc-members:
    :show-inheritance:

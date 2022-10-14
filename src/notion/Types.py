@@ -60,12 +60,25 @@ class RichTextObject:
     """
         Subclass for rich text object
     """
-    def __init__(self, text: Dict[str, str], annotations: Dict[str, Any], plain_text: str, href: Optional[str] = None) -> None:
+    def __init__(self, text: str, annotations: Dict[str, Any], plain_text: str, href: Optional[str] = None, link = None) -> None:
         """Creates rich text object"""
-        self.text = text
+        self.type = "text"
+        self.text = {"content": text, "link": link}
         self.annotations = annotations
-        self.plain_text = plain_text
+        self.plain_text = plain_text or text
         self.href = href
+
+    @classmethod
+    def from_args(cls, **kwargs) -> 'RichTextObject':
+        cls.annotations = {}
+        cls.annotations["bold"] = kwargs.get("bold", False)
+        cls.annotations["italic"] = kwargs.get("italic", False)
+        cls.annotations["strikethrough"] = kwargs.get("strikethrough", False)
+        cls.annotations["underline"] = kwargs.get("underline", False)
+        cls.annotations["code"] = kwargs.get("code", False)
+        cls.annotations["color"] = kwargs.get("color", "default")
+        return cls(kwargs.get("text", ""), cls.annotations, kwargs.get("plain_text", ""), kwargs.get("href", None), kwargs.get("link", None))
+
 
     @classmethod
     def from_notion_rich_text(cls, rich_text: Dict) -> 'RichTextObject':
@@ -73,11 +86,12 @@ class RichTextObject:
         annotations = rich_text["annotations"]
         plain_text = rich_text["plain_text"]
         href = rich_text.get("href", None)
+        link = rich_text.get("link", None)
         return cls(text, annotations, plain_text, href)
+
     
     def rich_text_object(self) -> Dict:
-        return {"text": self.text, "annotations": self.annotations, "plain_text": self.plain_text, "href": self.href}
-
+        return self.__dict__
     def __repr__(self) -> str:
         return "RichTextObject:" + json.dumps({"text": self.text, "annotations": self.annotations, "plain_text": self.plain_text, "href": self.href})
 
@@ -96,7 +110,7 @@ class RichText(Property):
     def property_value(self, text: str, href = None, bold = False, italic = False, strikethrough = False, underline = False, code = False, color = "default") -> None:
         annotations = {"bold": bold, "italic": italic, "strikethrough": strikethrough, "underline": underline, "code": code, "color": color}
 
-        rto = RichTextObject({"content": text}, annotations, text, href)
+        rto = RichTextObject(text, annotations, text, href)
         return super().property_value([rto.rich_text_object()])
 
 
@@ -114,7 +128,7 @@ class Title(Property):
 
     def property_value(self, text: str, bold = False, italic = False, strikethrough = False, underline = False, code = False, color = "default" ) -> None:
         annotations = {"bold": bold, "italic": italic, "strikethrough": strikethrough, "underline": underline, "code": code, "color": color}
-        rto = RichTextObject({"content": text}, annotations, text)
+        rto = RichTextObject(text, annotations, text)
         return super().property_value([rto.rich_text_object()])
 
     
