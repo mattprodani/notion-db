@@ -1,39 +1,19 @@
-notion.Connector
------------------------
+notion package
+==============
 
-.. automodule:: notion.Connector
+.. automodule:: notion
    :members:
    :undoc-members:
    :show-inheritance:
 
-notion.Database
-----------------------
+Submodules
+----------
 
-.. automodule:: notion.Database
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. toctree::
+   :maxdepth: 4
 
-notion.PropertyValues
-----------------------------
-
-.. automodule:: notion.PropertyValues
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-notion.Schema
---------------------
-
-.. automodule:: notion.Schema
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-notion.Types
--------------------
-
-.. automodule:: notion.Types
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   notion.Connector
+   notion.Database
+   notion.PropertyValues
+   notion.Schema
+   notion.Types

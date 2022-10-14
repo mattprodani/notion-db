@@ -1,7 +1,7 @@
-Notion
--------
+notion
+======
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 5
 
    notion
