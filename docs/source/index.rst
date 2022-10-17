@@ -7,7 +7,7 @@ Learn how to use it and create your own Notion integrations in minutes!
 .. toctree::
    :maxdepth: 5
 
-   modules
+   notion
    getting_started
 
 

@@ -1,99 +1,148 @@
 from datetime import datetime
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 from typing import List, Dict, Tuple, Optional, Any, TypeVar, TYPE_CHECKING, Union
 from .Types import RichTextObject
 import json
 
 if TYPE_CHECKING: pass
 
+class _PropertyValueFactory:
+    """Creates a PropertyValue object from a dictionary
 
-# class PropertyValueFactory:
-#     """
-#         Factory for creating PropertyValue objects
-#     """
-#     @staticmethod
-#     def create_property_value(name: str, value: Any) -> "PropertyValue":
-#         """
-#             Creates a PropertyValue object
-#             :param name: The name of the property
-#             :param value: The value of the property
-#         """
-#         if isinstance(value, RichTextObject):
-#             return RichTextPropertyValue(name, value)
-#         elif isinstance(value, list):
-#             if all(isinstance(item, RichTextObject) for item in value):
-#                 return RichTextListPropertyValue(name, value)
-#             elif all(isinstance(item, str) for item in value):
-#                 return TitlePropertyValue(name, value)
-#             elif all(isinstance(item, dict) for item in value):
-#                 return MultiSelectPropertyValue(name, value)
-#             else:
-#                 raise ValueError("Invalid value type")
-#         elif isinstance(value, str):
-#             return TitlePropertyValue(name, value)
-#         elif isinstance(value, dict):
-#             return SelectPropertyValue(name, value)
-#         elif isinstance(value, bool):
-#             return CheckboxPropertyValue(name, value)
-#         elif isinstance(value, datetime):
-#             return DatePropertyValue(name, value)
-#         elif isinstance(value, int):
-#             return NumberPropertyValue(name, value)
-#         elif isinstance(value, float):
-#             return NumberPropertyValue(name, value)
-#         else:
-#             raise ValueError("Invalid value type")
+    Args:
+        data (dict): A dictionary that maps column names to values
 
-#     @staticmethod
-#     def from_notion(notion: Dict) -> "PropertyValue":
-#         """
-#             Creates a property value from a dictionary.
-#             :param notion: The dictionary
-#         """
-#         name = notion["name"]
-#         value = notion["value"]
-#         if "rich_text" in value:
-#             return RichTextPropertyValue.from_json(name, value)
-#         elif "title" in value:
-#             return TitlePropertyValue.from_json(name, value)
-#         elif "select" in value:
-#             return SelectPropertyValue.from_json(name, value)
-#         elif "multi_select" in value:
-#             return MultiSelectPropertyValue.from_json(name, value)
-#         elif "checkbox" in value:
-#             return CheckboxPropertyValue.from_json(name, value)
-#         elif "date" in value:
-#             return DatePropertyValue.from_json(name, value)
-#         elif "number" in value:
-#             return NumberPropertyValue.from_json(name, value)
-#         elif "relation" in value:
-#             return RelationPropertyValue.from_json(name, value)
-#         elif "rollup" in value:
-#             return RollupPropertyValue.from_json(name, value)
-#         elif "files" in value:
-#             return FilesPropertyValue.from_json(name, value)
-#         elif "people" in value:
-#             return PeoplePropertyValue.from_json(name, value)
-#         elif "formula" in value:
-#             return FormulaPropertyValue.from_json(name, value)
-#         elif "created_time" in value:
-#             return CreatedTimePropertyValue.from_json(name, value)
-#         elif "created_by" in value:
-#             return CreatedByPropertyValue.from_json(name, value)
-#         elif "last_edited_time" in value:
-#             return LastEditedTimePropertyValue.from_json(name, value)
-#         elif "last_edited_by" in value:
-#             return LastEditedByPropertyValue.from_json(name, value)
-#         elif "url" in value:
-#             return URLPropertyValue.from_json(name, value)
-#         else:
-#             raise ValueError("Invalid property value")
+    Returns:
+        PropertyValue: A PropertyValue object
+    """
+    @staticmethod
+    def create(data: Dict[str, Any]) -> 'PropertyValue':
+        if 'title' in data:
+            return TitlePropertyValue(data['title'])
+        elif 'rich_text' in data:
+            return RichTextPropertyValue(data['rich_text'])
+        elif 'number' in data:
+            return NumberPropertyValue(data['number'])
+        elif 'select' in data:
+            return SelectPropertyValue(data['select'])
+        elif 'multi_select' in data:
+            return MultiSelectPropertyValue(data['multi_select'])
+        elif 'date' in data:
+            return DatePropertyValue(data['date'])
+        # elif 'people' in data:
+        #     return PeoplePropertyValue(data['people'])
+        # elif 'files' in data:
+        #     return FilesPropertyValue(data['files'])
+        elif 'checkbox' in data:
+            return CheckboxPropertyValue(data['checkbox'])
+        # elif 'url' in data:
+        #     return URLPropertyValue(data['url'])
+        # elif 'email' in data:
+        #     return EmailPropertyValue(data['email'])
+        # elif 'phone_number' in data:
+        #     return PhoneNumberPropertyValue(data['phone_number'])
+        elif 'formula' in data:
+            return FormulaPropertyValue(data['formula'])
+        elif 'relation' in data:
+            return RelationPropertyValue(data['relation'])
+        # elif 'rollup' in data:
+        #     return RollupPropertyValue(data['rollup'])
+        # elif 'created_time' in data:
+        #     return CreatedTimePropertyValue(data['created_time'])
+        # elif 'created_by' in data:
+        #     return CreatedByPropertyValue(data['created_by'])
+        # elif 'last_edited_time' in data:
+        #     return LastEditedTimePropertyValue(data['last_edited_time'])
+        # elif 'last_edited_by' in data:
+        #     return LastEditedByPropertyValue(data['last_edited_by'])
+        else:
+            raise ValueError("Invalid property value")
+
+    @staticmethod
+    def infer_from_value(value: Any) -> 'PropertyValue':
+        """
+            Infers the property value type from a value.
+
+            Args:
+                value (Any): The value to infer the type from
+                
+        """
+        if isinstance(value, str):
+            return RichTextPropertyValue(value)
+        elif isinstance(value, list):
+            return MultiSelectPropertyValue(value)
+        elif isinstance(value, bool):
+            return CheckboxPropertyValue(value)
+        elif isinstance(value, int) or isinstance(value, float):
+            return NumberPropertyValue(value)
+        elif isinstance(value, datetime):
+            return DatePropertyValue(value)
+        else:
+            raise ValueError("Could not infer property value type from type")
+
+    @staticmethod
+    def from_type(type: str, value: str) -> 'PropertyValue':
+        """
+            Returns a new property value of the specified type.
+            :param type: The type of the property value
+        """
+        if type == 'title':
+            return TitlePropertyValue(value)
+        elif type == 'rich_text' or type == 'text':
+            return RichTextPropertyValue(value)
+        elif type == 'number':
+            return NumberPropertyValue(value)
+        elif type == 'select':
+            return SelectPropertyValue(value)
+        elif type == 'multi_select':
+            return MultiSelectPropertyValue(value)
+        elif type == 'date':
+            return DatePropertyValue(value)
+        # elif type == 'people':
+        #     return PeoplePropertyValue(value)
+        # elif type == 'files':
+        #     return FilesPropertyValue(value)
+        elif type == 'checkbox':
+            return CheckboxPropertyValue(value)
+        # elif type == 'url':
+        #     return URLPropertyValue(value)
+        # elif type == 'email':
+        #     return EmailPropertyValue(value)
+        # elif type == 'phone_number':
+        #     return PhoneNumberPropertyValue(value)
+        elif type == 'formula':
+            return FormulaPropertyValue(value)
+        elif type == 'relation':
+            return RelationPropertyValue(value)
+        # elif type == 'rollup':
+        #     return RollupPropertyValue(value)
+        # elif type == 'created_time':
+        #     return CreatedTimePropertyValue(value)
+        # elif type == 'created_by':
+        #     return CreatedByPropertyValue(value)
+        # elif type == 'last_edited_time':
+        #     return LastEditedTimePropertyValue(value)
+        # elif type == 'last_edited_by':
+        #     return LastEditedByPropertyValue(value)
+        else:
+            raise ValueError("Invalid property value type {}".format(type))
 
 class PropertyValue(ABC):
     """
     Base class for all Property Values.
 
     Contains all properties held by the property value.
+
+    All Property Values contain a 'value' property, which is the python representation of the contained value.
+    E.g. a RichTextPropertyValue contains a 'value' property which is just the string plain text value.
+    
+    This helps to make Property Values easier to edit and manipulate as opposed to having to access the objects manually
+
+    Property Values also have a 'from_json' class method which can be used to create a new Property Value from a JSON object.
+
+    Construct a property value object based on the type required and update attributes using update() method.
+
+    # TODO setter for value
     """
 
     @abstractmethod
@@ -118,6 +167,17 @@ class PropertyValue(ABC):
             :param json: The JSON object
         """
         return cls.from_json(json)
+
+    @property
+    def notion(self):
+        """
+            Returns the JSON representation of the property value.
+        """
+        return self.__dict__
+
+    @abstractproperty
+    def value(self) -> Any:
+        pass
 
 
     @abstractmethod
@@ -161,14 +221,13 @@ class PropertyValue(ABC):
             Checks if the property value is equal to another property value.
             :param other: The other property value
         """
-        return self.__str__ == other.__str__ and self.__class__ == other.__class__
+        return self.__repr__() == other.__repr__()
 
-    @abstractmethod
     def __repr__(self) -> str:
         """
             Returns the string representation of the property value.
         """
-        pass    
+        return str(self.value)
 
 
 class TitlePropertyValue(PropertyValue):
@@ -227,8 +286,8 @@ class TitlePropertyValue(PropertyValue):
         """
         raise NotImplementedError("Title property values cannot be updated.")
         
-
-    def __repr__(self) -> str:
+    @property
+    def value(self) -> str:
         """
             Returns the string representation of the title property value.
         """
@@ -288,10 +347,13 @@ class RichTextPropertyValue(PropertyValue):
             **kwargs: additional arguments to pass to the Rich Text Object, such as bold, italic, etc.
 
         """        
-        raise NotImplementedError("Rich text property values cannot be updated.")
+        self.rich_text[0]["text"]["content"] = text
+        for key, value in kwargs.items():
+            self.rich_text[0]["text"]["annotations"][key] = value
 
 
-    def __repr__(self) -> str:
+    @property
+    def value(self) -> str:
         """Returns the string representation of the rich text property value."""
         return self.rich_text[0]["plain_text"]
 
@@ -343,7 +405,8 @@ class SelectPropertyValue(PropertyValue):
             self.select["color"] = color
         
 
-    def __repr__(self) -> str:
+    @property
+    def value(self) -> str:
         """
             Returns the string representation of the select property value.
         """
@@ -388,11 +451,16 @@ class MultiSelectPropertyValue(PropertyValue):
         self.multi_select = [{"name": name} for name in names]
 
 
+    @property
+    def value(self) -> str:
+        """Returns the string representation of the multi_select property value."""
+        return [option["name"] for option in self.multi_select]
+
     def __repr__(self) -> str:
         """
             Returns the string representation of the multi-select property value.
         """
-        return ", ".join([option["name"] for option in self.multi_select])
+        return ", ".join(self.value)
 
 
 class NumberPropertyValue(PropertyValue):
@@ -438,11 +506,12 @@ class NumberPropertyValue(PropertyValue):
         if isinstance(number, str): number = float(number)
         self.number = number
 
-    def __repr__(self) -> str:
+    @property
+    def value(self) -> str:
         """
             Returns the string representation of the number property value.
         """
-        return str(self.number)
+        return self.number
 
 
 class DatePropertyValue(PropertyValue):
@@ -489,6 +558,10 @@ class DatePropertyValue(PropertyValue):
         if timezone is not None:
             self.date["timezone"] = timezone
         
+    
+    @property
+    def value(self) -> str:
+        return self.date
 
 
     def __repr__(self) -> str:
@@ -538,11 +611,12 @@ class FormulaPropertyValue(PropertyValue):
         """
         self.formula = formula
 
-    def __repr__(self) -> str:
+    @property
+    def value(self) -> str:
         """
             Returns the string representation of the formula property value.
         """
-        return self.formula.__repr__()
+        return self.formula
 
 
 class RelationPropertyValue(PropertyValue):
@@ -575,5 +649,6 @@ class CheckboxPropertyValue(PropertyValue):
     def update(self, checked: bool) -> None:
         self.checkbox = checked
     
-    def __repr__(self) -> str:
-        return str(self.checkbox)
+    @property
+    def value(self) -> str:
+        return self.checkbox
