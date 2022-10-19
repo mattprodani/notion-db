@@ -39,10 +39,10 @@ class Property(ABC):
         self.name = new_name
         self.prop["name"] = new_name
 
-    @abstractmethod
-    def property_value(self, body) -> None:
-        """ Creates notion property value object """
-        return {self.type: body}
+    # @abstractmethod
+    # def property_value(self, body) -> None:
+    #     """ Creates notion property value object """
+    #     return {self.type: body}
 
     def __getattr__(self, __name: str) -> Any:
         if __name in self.__dict__:
@@ -248,10 +248,9 @@ class File(Property):
         return super().compile(file)
 
 class Checkbox(Property):
-    def __init__(self, **kwargs) -> None:
-        if len(kwargs) > 0: raise ValueError("Checkbox property does not support configuration.")
-        raise NotImplementedError("File property not yet implemented.")
-        super().__init__("checkbox")
+    def __init__(self, name: str) -> None:
+        super().__init__("checkbox", name)
+        
     def compile(self, checked: bool) -> None:
         return super().compile(checked)
 

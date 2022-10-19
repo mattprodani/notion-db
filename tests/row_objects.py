@@ -68,6 +68,7 @@ class TestRow(unittest.TestCase):
             "Age": NumberPropertyValue(20),
             "Height": NumberPropertyValue(6.0),
             "Is Cool": CheckboxPropertyValue(True)}
+        self.example_schema = Schema(self.example_column_list, self.example_type_list)
         
     def test_creation_from_dict(self):
         row = Row(self.example_value_dict)
@@ -238,6 +239,15 @@ class TestRow(unittest.TestCase):
         self.assertIsInstance(row.notion, dict)
         self.assertEqual(row.notion["properties"]["Name"]["type"], "rich_text")
 
+
+    def test_from_schema(self):
+        row = Row.from_schema(self.example_value_dict, self.example_schema)
+        self.assertIsInstance(row, Row)
+        self.assertEqual(len(row), 4)
+        self.assertEqual(row["Name"].type, "title")
+        self.assertEqual(row["Age"].type, "number")
+        self.assertEqual(row["Height"].type, "number")
+        self.assertEqual(row["Is Cool"].type, "checkbox")
 
 if __name__ == "__main__":
     unittest.main()

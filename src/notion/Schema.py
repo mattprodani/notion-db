@@ -1,10 +1,13 @@
-from typing import List, Dict, Tuple, Optional, Any, TypeVar, Union
+from typing import List, Dict, Tuple, Optional, Any, TypeVar, Union, TYPE_CHECKING
 from turtle import title
 from enum import Enum
 from abc import ABC, abstractmethod
 from collections import OrderedDict, defaultdict
 import pandas
-from .Connector import Connector
+if TYPE_CHECKING:
+    from .Types import Property
+    from .PropertyValues import PropertyValue
+    from .Connector import Connector
 from .Types import *
 
 class Schema:
@@ -87,7 +90,7 @@ class Schema:
 
 
     @classmethod
-    def from_database(cls, connector: Connector, db_id: str):
+    def from_database(cls, connector: "Connector", db_id: str):
         """
         Creates a Schema object from an existing Notion database.
         Create a Connector object prior to calling this method.
@@ -109,7 +112,7 @@ class Schema:
             Schema: {'Name': Title, 'Age': Number, 'Favorite Color': Select}
 
         """        
-        response = connector.get_db_schema(db_id)
+        response = connector.get_db_schema(db_id, json=True)
         properties = response['properties']
         schema_objects = [ cls._TYPE_MAP[property['type']].from_notion_property(property) for property in properties.values() ]
         # for name, property in properties.items():
@@ -169,7 +172,7 @@ class Schema:
             self.properties[name] = self._TYPE_MAP[datatype](name)
         else:
             raise ValueError("Must provide either a type or a Schema object.")
-        self._update()
+        # self._update()
 
     def remove(self, column_name: str) -> None:
         """Removes a column from the schema
@@ -185,7 +188,7 @@ class Schema:
             raise ValueError("Column name not found in properties.")
         
         del self.properties[column_name]
-        self._update()
+        # self._update()
     
     def update_type(self, name:str, datatype: Union[str, Property], **kwargs):
         """Update the type of a column
@@ -209,7 +212,7 @@ class Schema:
             self.properties[name] = self._TYPE_MAP[datatype](name, **kwargs)
         else:
             self.properties[name] = datatype
-        self._update()
+        # self._update()
 
 
     def rename_column(self, old_name: str, new_name: str) -> None:
@@ -223,7 +226,7 @@ class Schema:
         if new_name in self.properties:
             raise ValueError("Duplicate column name encountered.")
         self.properties[new_name] = self.properties.pop(old_name).rename(new_name)
-        self._update()
+        # self._update()
 
 
 
@@ -259,22 +262,22 @@ class Schema:
     def _infer(val):
         return "number" if isinstance(val, int) or isinstance(val, float) else "rich_text"
 
-    def _update(self):
-        """
-            Update the schema to reflect changes.
-        """
-        self.columns = self.labels = list(self.properties.keys())
-        if len(self.columns) != len(set(self.columns)):
-            raise ValueError("Duplicate column names found.")
-        title = None
-        for label, object in self.properties.items():
-            if isinstance(object, Title):
-                title = label
-                break
-        if not title: Warning("No title column found. Please add a title column.")
-        self.title = title
-        # if not title: Warning("No title column found for schema. Unless \
-        # one is provided, the first column will be used as the title column.")
+    # def _update(self):
+    #     """
+    #         Update the schema to reflect changes.
+    #     """
+    #     self.columns = self.labels = list(self.properties.keys())
+    #     if len(self.columns) != len(set(self.columns)):
+    #         raise ValueError("Duplicate column names found.")
+    #     title = None
+    #     for label, object in self.properties.items():
+    #         if isinstance(object, Title):
+    #             title = label
+    #             break
+    #     if not title: Warning("No title column found. Please add a title column.")
+    #     self.title = title
+    #     # if not title: Warning("No title column found for schema. Unless \
+    #     # one is provided, the first column will be used as the title column.")
         
 
 

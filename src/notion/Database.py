@@ -1,10 +1,10 @@
 import pandas as pd
 from typing import List, Dict, Tuple, Optional, Any, TypeVar, Union, TYPE_CHECKING
 from .PropertyValues import _PropertyValueFactory, PropertyValue
-from .Schema import Schema
 
 if TYPE_CHECKING:
     from .Types import Property
+    from .Schema import Schema
 
 
 class Row:
@@ -105,6 +105,33 @@ class Row:
             self._add(key, data[key], type)
 
 
+    @classmethod
+    def from_schema(cls, values: Dict, schema: 'Schema'):
+        """
+            Create a row from a schema
+            This is useful when trying to conform to an existing database, or when customizing row creation.
+
+            All values provided will automatically be converted to the types based on the schema.
+
+            By ID is not currently supported
+
+            Args:
+                values (dict): A dictionary that maps column names to values
+                schema (Schema): A schema object
+
+            Example:
+                >>> schema = Schema({"Name": "title", "Age": "number"})
+                >>> row = Row.from_schema({"Name": "John", "Age": 20}, schema)
+                >>> row
+                {'Name': 'John', 'Age': 20}
+                >>> schema = Schema.from_database(DB_ID)
+                >>> row = Row.from_schema({"Name": "John", "Age": 20}, schema)
+                >>> row
+                {'Name': 'John', 'Age': 20}
+
+        """
+        return cls(data = values, types = schema.types)
+
     @property
     def value(self):
         """ Value representation of the row using underlying representation of the property values
@@ -188,73 +215,3 @@ class Row:
             self.data[label] = _PropertyValueFactory.from_type(type, value)
         else:    
             self.data[label] = _PropertyValueFactory.infer_from_value(value)
-
-        
-        
-# class Database:
-
-#     def __init__(self, data, schema: Optional["Schema"] = None, name = None, id =  None, cover = None):
-#         """
-#             Creates a Database object.
-#             :param data: A list of DatabaseRow objects
-#             :param schema: A Schema object
-#             :param name: The name of the database
-#             :param id: The id of the database
-#             :param cover: The cover of the database
-#         """
-#         self.rows = []
-#         for row in data:
-#             if isinstance(row, DatabaseRow):
-#                 self.rows.append(row)
-#             else:
-#                 self.rows.append(DatabaseRow(row, schema = schema))
-#         self.schema = schema or self.rows[0].schema
-#         self.name = name
-#         self.id = id
-#         self.cover = cover
-#         self.columns = self.schema.labels()
-#         self.df = self.to_pandas()
-
-#     def __getitem__(self, key):
-#         if isinstance(key, int):
-#             return self.rows[key]
-#         elif isinstance(key, str):
-#             return self.schema[key]
-#         elif isinstance(key, slice):
-#             return self.rows[key]
-#         elif isinstance(key, tuple):
-#             return self.rows[key[0]][key[1]]
-        
-#     def __setitem__(self, key, value):
-#         if isinstance(key, int):
-#             self.rows[key] = value
-#         elif isinstance(key, str):
-#             self.schema[key] = value
-#         elif isinstance(key, slice):
-#             self.rows[key] = value
-#         elif isinstance(key, tuple):
-#             self.rows[key[0]][key[1]] = value
-
-#     def to_pandas(self) -> pd.DataFrame:
-#         """
-#             Converts the database to a pandas DataFrame.
-#         """
-#         return pd.DataFrame([row.values for row in self.rows], columns = self.columns)
-
-#     def __repr__(self) -> str:
-#         return self.df.__repr__()
-
-#     def __str__(self) -> str:
-#         return self.df.__str__()
-
-#     @classmethod
-#     def from_pandas(cls, df: pd.DataFrame, schema: Optional["Schema"] = None) -> 'Database':
-#         """
-#             Creates a Database object from a pandas DataFrame.
-#             Infers the schema from the pandas DataFrame if no schema is provided.
-#         """
-#         if schema:
-#             return cls(df.to_dict('records'), schema = schema)
-#         else:
-#             return cls(df.to_dict('records'), schema = Schema.from_pandas(df))
-        

@@ -1,8 +1,11 @@
 from typing import List, Dict, Tuple, Optional, Any, TypeVar, TYPE_CHECKING
 import requests
 
-if TYPE_CHECKING:
-    from .Schema import Schema
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from urllib.parse import urlparse
+
+from .Schema import Schema
 
 class Connector:
     """
@@ -29,11 +32,15 @@ class Connector:
     """
     def __init__(self, api_key, **kwargs) -> None:
         """ Initializes the connector """
-        self.API_KEY = api_key
-        self.session = requests.Session(**kwargs)
-        self.session.headers.update({"Authorization": f"Bearer {self.API_KEY}"})
-        self.session.headers.update({"Notion-Version": "2022-02-22"})
-        self.session.headers.update({"Content-Type": "application/json"})
+        self.__API_KEY = api_key
+        self.__session = requests.Session(**kwargs)
+        self.__session.headers.update({"Authorization": f"Bearer {self.__API_KEY}"})
+        self.__session.headers.update({"Notion-Version": "2022-02-22"})
+        self.__session.headers.update({"Content-Type": "application/json"})
+
+        # Retry 3 times
+        retries = Retry(total=3, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
+        self.__session.mount('https://', HTTPAdapter(max_retries=retries))
         
     # Database
     # ---------------------
@@ -63,7 +70,7 @@ class Connector:
         
         data.update(kwargs)
         
-        response = self.session.post(f"https://api.notion.com/v1/databases/{db_id}/query", json = data)
+        response = self.__session.post(f"https://api.notion.com/v1/databases/{db_id}/query", json = data)
         
         return response.json()
     
@@ -93,7 +100,7 @@ class Connector:
         if cover_url:
             json["cover"] = {"type": "external", "external": {"url": cover_url}}
         json.update(kwargs)
-        response = self.session.post("https://api.notion.com/v1/databases", json = json)
+        response = self.__session.post("https://api.notion.com/v1/databases", json = json)
 
         return response.json()
 
@@ -122,7 +129,7 @@ class Connector:
 
         """        
         if title: raise NotImplementedError("Title update not implemented")
-        response = self.session.patch(f"https://api.notion.com/v1/databases/{db_id}", json = schema._to_notion())
+        response = self.__session.patch(f"https://api.notion.com/v1/databases/{db_id}", json = schema._to_notion())
         return response.json()
     
 
@@ -140,10 +147,10 @@ class Connector:
             Schema: The schema object of the database (or json if json is True)
 
         """
-        response = self.session.get(f"https://api.notion.com/v1/databases/{db_id}")
+        response = self.__session.get(f"https://api.notion.com/v1/databases/{db_id}")
         if json:
             return response.json()
-        return Schema.from_notion(response.json())
+        return Schema.from_database(response.json())
 
     
 
@@ -164,18 +171,10 @@ class Connector:
         Returns:
             Dict: response from the API
         """        
-        if not isinstance(row, DatabaseRow):
-            if isinstance(row, dict):
-                json = row
-            else:
-                try:
-                    json = json.loads(row)
-                except:
-                    raise TypeError("row must be a DatabaseRow object or a JSON object")
-        else: json = row.to_notion()
+        json = row.notion
         json["parent"] = {"database_id": db_id}
         json.update(kwargs)
-        response = self.session.post("https://api.notion.com/v1/pages", json = json)
+        response = self.__session.post("https://api.notion.com/v1/pages", json = json)
         return response.json()
 
 
@@ -199,5 +198,10 @@ class Connector:
             if url.startswith("/"): url = "https://api.notion.com" + url
             else: raise ValueError("url must be a notion API url that starts with https://api.notion.com or / . eg. '/databases/get'")
             
-        response = self.session.request(method, url, **kwargs)
-        return response.json()
+        return self.__request(method, url, **kwargs)
+         
+
+    def __request(self, method, url, **kwargs):
+        """ Only for internal use. All requests will be routed through here. This is a final step and secuirty check before making a request."""
+        if not url.startswith("https://api.notion.com"): raise ValueError("Session received a request that was not a notion API request to " + url)
+        return self.__session.request(method, url, **kwargs)
