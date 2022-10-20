@@ -1,5 +1,5 @@
 import unittest
-from notion.SchemaObjects import SchemaObject
+from notiondb.SchemaObject import SchemaProperty
 
 class TestSchemaObject(unittest.TestCase):
     """ Tests based on following functionality
@@ -52,21 +52,21 @@ class TestSchemaObject(unittest.TestCase):
     def test_type_must_be_specified(self):
         """ Test that an error is raised if type is not specified """
         with self.assertRaises(ValueError):
-            SchemaObject()
+            SchemaProperty()
 
     def test_name_or_id_must_be_specified(self):
         """ Test that an error is raised if name or id is not specified """
         with self.assertRaises(ValueError):
-            SchemaObject(type="checkbox")
+            SchemaProperty(type="checkbox")
 
     def test_create_checkbox(self):
         """ Test that a checkbox object is created correctly """
-        checkbox = SchemaObject(type="checkbox", name="In stock")
+        checkbox = SchemaProperty(type="checkbox", name="In stock")
         self.assertEqual(checkbox.notion, {'name': 'In stock', 'type': 'checkbox', 'checkbox': {}})
 
     def test_create_select(self):
         """ Test that a select object is created correctly """
-        select = SchemaObject(type="select", name="Color", config={"options": ["red", "green", "blue"]})
+        select = SchemaProperty(type="select", name="Color", config={"options": ["red", "green", "blue"]})
         self.assertEqual(select.notion, {'name': 'Color', 'type': 'select', 'select': {'options': ['red', 'green', 'blue']}})
 
     def test_create_schema_object_from_notion_response(self):
@@ -77,18 +77,18 @@ class TestSchemaObject(unittest.TestCase):
             "type": "checkbox",
             "checkbox": {}
         }
-        schema_object = SchemaObject(**notion_response)
+        schema_object = SchemaProperty(**notion_response)
         self.assertEqual(schema_object.notion, notion_response)
 
     def test_update_config_of_schema_object(self):
         """ Test that the config of a schema object can be updated """
-        schema_object = SchemaObject(type='number', name='Price')
+        schema_object = SchemaProperty(type='number', name='Price')
         schema_object.config = {"format": "number"}
         self.assertEqual(schema_object.notion, {'name': 'Price', 'type': 'number', 'number': {'format': 'number'}})
 
     def test_update_config_of_schema_object_2(self):
         """ Test that the config of a schema object can be updated """
-        schema_object = SchemaObject(type='number', name='Price')
+        schema_object = SchemaProperty(type='number', name='Price')
         schema_object["format"] = "number"
         self.assertEqual(schema_object.notion, {'name': 'Price', 'type': 'number', 'number': {'format': 'number'}})
     

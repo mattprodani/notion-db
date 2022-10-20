@@ -17,12 +17,12 @@ sys.path.insert(0, os.path.abspath('../..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'notion'
-copyright = '2022, MattProdani'
+project = 'Notion DB Client'
+copyright = '2022, Matt Prodani'
 author = 'MattProdani'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1'
+release = '0.1.0'
 
 
 autodoc_member_order = 'groupwise'
@@ -34,7 +34,11 @@ autodoc_default_options = {
     'undoc-members': True,
     'exclude-members': '__weakref__',
     'show-inheritance': True,
+    'autosummary': True
 }
+
+add_module_names = False
+
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -45,7 +49,8 @@ extensions = [
     'sphinx.ext.autosectionlabel',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
-    'sphinx.ext.autosummary'
+    'sphinx.ext.autosummary',
+    'autodocsumm',
 ]
 
 # Add any paths that contain templates here, relative to this directory.

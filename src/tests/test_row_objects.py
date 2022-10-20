@@ -1,8 +1,7 @@
 import unittest
-from notion import Row 
-from notion.PropertyValues import *
-from notion.Types import Title
-from notion.Schema import Schema
+from notiondb import Row 
+from notiondb.PropertyValues import *
+from notiondb.Schema import Schema
 
 """
 Row tests for test-driven development

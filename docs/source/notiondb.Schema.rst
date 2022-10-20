@@ -1,7 +1,7 @@
-notion.Database module
+notiondb.Schema module
 ======================
 
-.. automodule:: notion.Database
+.. automodule:: notiondb.Schema
    :members:
    :undoc-members:
    :show-inheritance:
