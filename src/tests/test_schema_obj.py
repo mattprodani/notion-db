@@ -1,5 +1,5 @@
 import unittest
-from notiondb.SchemaObject import SchemaProperty
+from notiondb.SchemaProperty import SchemaProperty
 
 class TestSchemaObject(unittest.TestCase):
     """ Tests based on following functionality
