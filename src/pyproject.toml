@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A powerful object-oriented Python library for easy interaction with Notion.so databases"
 authors = ["Matt Prodani <mattp@nyu.edu>"]
 license = "GPL-3.0"
-readme = "README.md"
+readme = "README.rst"
 
 [tool.poetry.dependencies]
 python = "^3.8"
