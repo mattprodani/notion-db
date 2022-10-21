@@ -1,32 +1,29 @@
-Notion-Client
+Notion-DB
 =============
-NotionClient is a powerful object-oriented client for the Notion API. 
+Notion-DB is a powerful object-oriented client for the Notion API that
+allows you to easily access and work with notion Databases.
 Learn how to use it and create your own Notion integrations in minutes!
 
 Installation
 ------------
 Install the package using pip:
-```
-pip install notion-client
-```
+    pip install notion-db
+
 
 Usage
 -----
-First, import the client:
-```
-from notion_client import Client
-```
+Import notiondb and create a client object:
+    from notion_db import Connector
+    con = Connector("YOUR_API_KEY")
 
-Then, create a client instance:
-```
-client = Client(auth="secret_...")
-```
-
-You can now use the client to interact with the Notion API. For example, to get a page:
-```
-page = client.get_block("https://www.notion.so/Notion-Python-SDK-Example-Page-1e0e1e1e1e1e4e5e8e9e9e9e9e9e9e9e")
-```
-TODO CONTINUE
+To add a row to an existing database, use the Row and Schema objects:
+    >>> from notion_db import Row, Schema
+    >>> schema = con.get_db_schema("YOUR_DATABASE_ID")
+    >>> schema
+    SchemaObject: {'Name': {'type': 'title'}, 'Age': {'type': 'number'}}
+    >>> row = Row(data = {"Name": "John", "Age": 20}, schema)
+    >>> con.add_row_to_db("YOUR_DATABASE_ID", row)
+    
 
 License
 -------
