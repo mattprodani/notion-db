@@ -52,6 +52,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.autosummary',
     'autodocsumm',
+    'myst_parser'
 ]
 
 # Add any paths that contain templates here, relative to this directory.

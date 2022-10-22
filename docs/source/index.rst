@@ -9,22 +9,22 @@ Learn how to use it and create your own Notion integrations in minutes!
    :maxdepth: 5
 
    notiondb
-   getting_started
+   readme
 
 Installation
 ------------
 Install the package using pip:
-    pip install notion-db
+    pip install notion-toolkit
 
 
 Usage
 -----
 Import notiondb and create a client object:
-    from notion_db import Connector
+    from notiondb import Connector
     con = Connector("YOUR_API_KEY")
 
 To add a row to an existing database, use the Row and Schema objects:
-    >>> from notion_db import Row, Schema
+    >>> from notiondb import Row, Schema
     >>> schema = con.get_db_schema("YOUR_DATABASE_ID")
     >>> schema
     SchemaObject: {'Name': {'type': 'title'}, 'Age': {'type': 'number'}}
