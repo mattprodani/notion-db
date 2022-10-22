@@ -31,7 +31,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/mattprodani/notion-db">
-    <img src="assets/logo.png" alt="Logo" width="80" height="80">
+    <img src="https://github.com/mattprodani/notion-db/raw/6e881060ffebffbb24fcb6f41262907f3f72219e/assets/notion_logo.png" alt="Logo" width="80" height="80">
   </a>
 
 <h3 align="center">Notion-DB</h3>
@@ -88,7 +88,7 @@ please refer to the [Documentation](https://notion-db.rtfd.io). Also refer to th
 
 1. Install the package using pip
    ```sh
-   pip install notion-db
+   pip install notion-toolkit
    ```
 
 2. Get an API key at [https://www.notion.so/my-integrations](https://www.notion.so/my-integrations)
@@ -96,7 +96,7 @@ please refer to the [Documentation](https://notion-db.rtfd.io). Also refer to th
 
 ### Example Usage
 
-<img src = "assets/example_code.svg" height = 300>
+<img src = "https://github.com/mattprodani/notion-db/raw/6e881060ffebffbb24fcb6f41262907f3f72219e/assets/example_code.svg" height = 300>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -143,7 +143,7 @@ Distributed under the GNU 3 License.
 
 Matt Prodani - mattp@nyu.edu
 
-Project Link: [https://github.com/mattprodani/notion-db](https://github.com/mattprodani/notion-db)
+Repository Link: [https://github.com/mattprodani/notion-db](https://github.com/mattprodani/notion-db)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
