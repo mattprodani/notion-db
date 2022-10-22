@@ -1,4 +1,4 @@
-notiondb.SchemaProperty module
+Schema Property Objects
 ==============================
 
 .. automodule:: notiondb.SchemaProperty

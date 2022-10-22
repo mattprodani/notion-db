@@ -1,7 +1,7 @@
-notiondb package
+notiondb Documentation
 ================
 
-Submodules
+Main Classes
 ----------
 
 .. toctree::
@@ -9,13 +9,21 @@ Submodules
 
    notiondb.Connector
    notiondb.Database
-   notiondb.PropertyValues
+   notiondb.Row
    notiondb.Schema
+
+Types
+-----
+
+.. toctree::
+   :maxdepth: 4
+
    notiondb.SchemaProperty
+   notiondb.PropertyValues
 
 Module contents
 ---------------
-
+   
 .. automodule:: notiondb
    :members:
    :undoc-members:

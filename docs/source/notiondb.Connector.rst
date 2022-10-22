@@ -1,4 +1,4 @@
-notiondb.Connector module
+Connector Object
 =========================
 
 .. automodule:: notiondb.Connector

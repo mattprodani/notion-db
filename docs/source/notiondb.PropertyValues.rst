@@ -1,4 +1,4 @@
-notiondb.PropertyValues module
+PropertyValue objects
 ==============================
 
 .. automodule:: notiondb.PropertyValues

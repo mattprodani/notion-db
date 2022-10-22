@@ -1,7 +1,7 @@
-Database Object
+Row Objects
 ========================
 
-.. automodule:: notiondb.Database
+.. automodule:: notiondb.Row
    :members:
    :undoc-members:
    :show-inheritance:

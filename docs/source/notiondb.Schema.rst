@@ -1,4 +1,4 @@
-notiondb.Schema module
+Schema Object
 ======================
 
 .. automodule:: notiondb.Schema
