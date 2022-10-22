@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "notion-toolkit"
-version = "0.1.1"
+version = "0.1.2"
 description = "A powerful object-oriented Python library for easy interaction with Notion.so databases"
 authors = ["Matt Prodani <mattp@nyu.edu>"]
 homepage = "https://notion-db.rtfd.io"
